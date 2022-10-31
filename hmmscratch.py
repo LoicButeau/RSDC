@@ -21,7 +21,7 @@ params= [delta1,delta2,phi,sig,p11,p12,p21,p22]
 
 
 
-
+# Generate the AR(1) observations
 def generateAR():
 
     st1 = []
@@ -46,12 +46,13 @@ def generateAR():
 
 y = generateAR()
 
+#use the package to infer the transtition matrix to validate our results with the hamilton filter
 model = GaussianHMM(n_components = 2)
 X = np.array(y).reshape(-1,1)
 model.fit(X)
 print(model.transmat_)
 
-
+#Constraints for the optimization of parameters
 def constraint1(params):
     return 1-params[4] - params[5]
 
@@ -61,6 +62,7 @@ def constraint2(params):
 def constraint3(params):
     return params[3]-0.00001
 
+#Hamilton filter algorithm
 def hamilton(params):
     p1filt = np.zeros(len(y))
     p2filt = np.zeros(len(y))
@@ -85,17 +87,17 @@ def hamilton(params):
     log = np.log(np.sum(f))
     return -log
 
+#Optimization
 con1 = {"type": "eq", "fun": constraint1}
 con2 = {"type": "eq", "fun": constraint2}
 con3 = {"type": "ineq", "fun": constraint3}
 cons = [con1,con2,con3]
 bounds = ((None,None),(None,None),(None,None),(0.0001,1),(0,1),(0,1),(0,1),(0,1))
 xo=[0.1,0.1,0.1,0.1,0.2,0.8,0.3,0.7]
-
-
 optparams = spo.minimize(hamilton, x0=xo,constraints=cons, bounds = bounds)
 print(optparams.x)
 
+#Plotting the graph
 x_axis= range(len(y))
 y_axis=y
 
