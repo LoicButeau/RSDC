@@ -2,37 +2,55 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import scipy.optimize as spo
+from hmmlearn.hmm import GaussianHMM
+import random
 
 
-
+transmat= [[0.5,0.5],
+           [0.5,0.5]]
 delta1 =0.3
 delta2=0.2
 phi=0.5
 sig=0.3
-
-transmat= [[0.5,0.5],
-           [0.5,0.5]]
-
-
-xk = np.arange(len(transmat))
-
-def generate_sample(cur_state):
-    return np.random.choice(xk, 1,  p = transmat[cur_state])
-
-initial_state = 0
-sample_len = 100
-y = [-1 for i in range(sample_len)]
-y[0] = initial_state
-for i in range(1, sample_len):
-    y[i] = generate_sample(y[i-1])[0]
-
-
-
 p11=transmat[0][0]
 p12=1-p11
 p21=transmat[1][0]
 p22=1-p21
 params= [delta1,delta2,phi,sig,p11,p12,p21,p22]
+
+
+
+
+
+def generateAR():
+
+    st1 = []
+    st2 = []
+    timeseries = []
+    T=100
+    delta1 = 0.3
+    delta2=0.1
+    phi=0.2
+    et = np.random.normal(0, 1, T)
+
+    st1.append(delta1/(1-phi))
+    st2.append(delta2/(1-phi))
+
+    for i in range(1,T):
+        st1.append(delta1 + phi*st1[i-1]+et[i])
+        st2.append(delta2 + phi*st2[i-1]+et[i])
+    
+    st1.extend(st2)
+    random.shuffle(st1)   
+    return st1
+
+y = generateAR()
+
+model = GaussianHMM(n_components = 2)
+X = np.array(y).reshape(-1,1)
+model.fit(X)
+print(model.transmat_)
+
 
 def constraint1(params):
     return 1-params[4] - params[5]
@@ -53,7 +71,6 @@ def hamilton(params):
 
     for t in range(1,len(y)):
 
-    
         #etape 1
         p1pred = params[4]*p1filt[t-1] + params[6]*p2filt[t-1]
         p2pred = params[5]*p1filt[t-1] + params[7]*p2filt[t-1]
@@ -65,7 +82,7 @@ def hamilton(params):
         p1filt[t] = 1/(math.sqrt(2*np.pi*params[3]))*math.exp(-1*(y[t]-params[0]-params[2]*y[t-1])**2/(2*params[3]))*p1pred / f[t]
         p2filt[t] = 1/(math.sqrt(2*np.pi*params[3]))*math.exp(-1*(y[t]-params[1]-params[2]*y[t-1])**2/(2*params[3]))*p2pred / f[t]
 
-    log = np.sum(f)
+    log = np.log(np.sum(f))
     return -log
 
 con1 = {"type": "eq", "fun": constraint1}
