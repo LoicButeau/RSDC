@@ -6,7 +6,7 @@ from hmmlearn.hmm import GaussianHMM
 import random
 import pandas as pd
 
-np.random.seed(10)
+np.random.seed(145)
 
 transmat= [[0.5,0.5],
            [0.5,0.5]]
