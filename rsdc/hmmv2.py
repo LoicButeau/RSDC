@@ -7,7 +7,7 @@ import random
 import pandas as pd
 import numpy.random as rnd
 
-np.random.seed(132)
+np.random.seed(675)
 
 # Generates the states
 def generate_state(mat_transition, n):
@@ -149,7 +149,10 @@ def hamilton(params,y):
 
     res = f[1:]
     log = np.sum((np.log(res)))
+
+
     #print(np.log(res))
+    #plt.plot(range(len(y)),f)
     return -1*log
 
 def optimize(y):
@@ -173,57 +176,105 @@ def optimize(y):
     con3 = {"type": "ineq", "fun": constraint3}
     con4 = {"type": "ineq" , "fun" : constraint4}
     cons = [con1,con2,con3,con4]
-    bounds = ((None,None),(None,None),(None,None),(None,None),(0,1),(0,1))
-    xo=[0,0,0,0,0,0]
-    optparams = spo.minimize(hamilton,args=y, x0=xo,constraints=cons, bounds = bounds)
+    bounds = ((0.00001,None),(0.00001,None),(0.00001,1),(0.0001,None),(0.0001,1),(0.000001,1))
+    xo=[0.1,0.1,0.1,0.1,0.1,0.1]
+    optparams = spo.minimize(hamilton,args=y, x0=xo,constraints = cons, bounds = bounds)
     return optparams
 
 
+def MonteCarloSimulate(count):
+    
+    for i in range(count):
 
-#Step 1, we initiate data
-delta1 = 3
-delta2 = 0.8
-phi = 0.6
-sig = 0.4
-p11 = 0.9
-p22 = 0.85
-p12 = 1 - p11
-p21 = 1 - p22
-params = [delta1,delta2,phi,sig,p11,p22]
-transmat = [[p11,p12],[p21,p22]]
+        #Step 1: We initiate the data
+        p11= random.random()+0.0001
+        p22 = random.random() + 0.0001
 
-#Step 2 generate states according to the matrix
-realstates = generate_state(transmat,400)
+        p11= 0.9
+        p22=0.9
+        p12 = 1 - p11
+        p21 = 1 - p22
+        delta1 = random.uniform(3,6) + 0.0001
+        delta2 = random.uniform(0,2) + 0.0001
+        phi = random.random() + 0.0001
+        sig=0.5
+        t=10000
 
-#Step 3: generate the ar according to the states
-y = generateAR(params, realstates)
+        transmat = [[p11,p12],[p21,p22]]
+        params=[delta1,delta2,phi,sig,p11,p22]
 
-#step 4: We generate the probabilities with the filter
-p1filt, p2filt = generate_p(params,y)
+        #Step 2, we generate states according to the matrix
+        x = generate_state(transmat, t)
 
-#Step 5: We obtain the states predicted by the filts
-hmmstates = hmm(p1filt, p2filt)
+        #Step 3, we generate the ar according to the states
+        y = generateAR(params,x)
 
-#Step 6: We find the transition matrix according to the predicted states
-hmmtransmat = find_transition(hmmstates)
+        #Step 4 we generate the probabilities with the filter
+        p1filt,p2filt = generate_p(params, y)
 
-#Step 7: Optimize the parameters using y
-optimizeroutput = optimize(y)
-print(optimizeroutput.x)
+        #Step 5: We obtain the states predicted by the filts
+        hmmstates = hmm(p1filt,p2filt)
+
+        #Step 6: We find the transition matrix accroding to the predicted states
+        hmmtransmat = find_transition(hmmstates)
+
+        #Step 7: optimize the parameters
+        optimizeroutput = optimize(y)
+
+        squarederrormat = np.subtract(hmmtransmat,transmat)
+        squarederror = np.sum(squarederrormat)
+
+        print()
+        print(f"Actual params are : {params}")
+        print(f"actual transmat is : {transmat}")
+        print(f"optimizer params are : {optimizeroutput.x}")
+        print(f"hmmtransmat is : {hmmtransmat}")
+        print(f"squared error is : {squarederror}")
 
 
+MonteCarloSimulate(5)
 
-x_axis = range(len(realstates))
-y_axis1 = y
-y_axis2 = realstates
-y_axis3= hmmstates
+# #Step 1, we initiate data
+# delta1 = 3
+# delta2 = 0.8
+# phi = 0.6
+# sig = 0.4
+# p11 = 0.9
+# p22 = 0.85
+# p12 = 1 - p11
+# p21 = 1 - p22
+# params = [delta1,delta2,phi,sig,p11,p22]
+# transmat = [[p11,p12],[p21,p22]]
 
-print(transmat)
-print(hmmtransmat)
+# #Step 2 generate states according to the matrix
+# realstates = generate_state(transmat,400)
 
+# #Step 3: generate the ar according to the states
+# y = generateAR(params, realstates)
 
-plt.plot(x_axis,y_axis1)
-plt.plot(x_axis,y_axis2, color= "red", linewidth ="6")
-plt.plot(x_axis,y_axis3, color = "green")
+# #step 4: We generate the probabilities with the filter
+# p1filt, p2filt = generate_p(params,y)
 
-plt.show()
+# #Step 5: We obtain the states predicted by the filts
+# hmmstates = hmm(p1filt, p2filt)
+
+# #Step 6: We find the transition matrix according to the predicted states
+# hmmtransmat = find_transition(hmmstates)
+
+# #Step 7: Optimize the parameters using y
+# optimizeroutput = optimize(y)
+# print(optimizeroutput.x)
+
+# x_axis = range(len(realstates))
+# y_axis1 = y
+# y_axis2 = realstates
+# y_axis3= hmmstates
+
+# print(transmat)
+# print(hmmtransmat)
+
+# plt.plot(x_axis,y_axis1)
+# plt.plot(x_axis,y_axis2, color= "red", linewidth ="6")
+# plt.plot(x_axis,y_axis3, color = "green")
+
+# plt.show()
