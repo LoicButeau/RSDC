@@ -8,7 +8,7 @@ import pandas as pd
 import numpy.random as rnd
 import scipy.stats as stats
 
-np.random.seed(675)
+np.random.seed(893)
 
 # Generates the states
 def generate_state(mat_transition, n):
@@ -20,27 +20,22 @@ def generate_state(mat_transition, n):
     return x
 
 # Generate thes AR
-def generateAR(params,x):
-    
-    st = []
-    T=len(x)
-    delta1 = params[0]
-    delta2= params[1]
-    phi=params[2]
-    et = np.random.normal(0, 1, T)
+def generateNorm(params,x):
 
-    st0 = delta1/(1-phi)
+    u0 = params[0]
+    u1 = params[1]
+    sig = params[2]
+    T= len(x)
 
-    #Since we start in state 0, we add st0
-    st.append(st0)
+    series0 = np.random.normal(u0, math.sqrt(sig),T)
+    series1 = np.random.normal(u1,math.sqrt(sig),T)
+    st=[]
 
-    for i in range(1,T):
-
-        if (x[i] == 0):
-            st.append(delta1 + phi*st[i-1]+et[i])
+    for i in range(len(x)-1):
+        if (x[i]==0):
+            st.append(series0[i])
         else:
-            st.append(delta2 + phi*st[i-1]+et[i])
-
+            st.append(series1[i])
     return st
 
 #generates probility
@@ -51,12 +46,11 @@ def generate_p(params,y) :
     p2_prev = np.zeros(len(y))
     fyt_global = np.zeros(len(y))
 
-    delta1 = params[0]
-    delta2= params[1]
-    phi = params[2]
-    sig=params[3]
-    p11 = params[4]
-    p22=params[5]
+    u0 = params[0]
+    u1= params[1]
+    sig = params[2]
+    p11 = params[3]
+    p22=params[4]
     p21 = 1 - p22
     p12 = 1 - p11
 
@@ -72,10 +66,10 @@ def generate_p(params,y) :
         p2_prev[t] = p1filt[t-1] * p12 + p2filt[t-1] * p22
         
         
-        fyt_global[t] = 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-delta1-phi*y[t-1])**2/(2*sig))*p1_prev[t] + 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-delta2-phi*y[t-1])**2/(2*sig))*p2_prev[t]
+        fyt_global[t] = 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-u0)**2/(2*sig))*p1_prev[t] + 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-u1)**2/(2*sig))*p2_prev[t]
     
-        p1filt[t] = (1/(math.sqrt(2*np.pi*sig)))*math.exp(-1*(y[t]-delta1-phi*y[t-1])**2/(2*sig))* p1_prev[t] / fyt_global[t]
-        p2filt[t] = (1/(math.sqrt(2*np.pi*sig)))*math.exp(-1*(y[t]-delta2-phi*y[t-1])**2/(2*sig))* p2_prev[t] / fyt_global[t]
+        p1filt[t] = (1/(math.sqrt(2*np.pi*sig)))*math.exp(-1*(y[t]-u0)**2/(2*sig))* p1_prev[t] / fyt_global[t]
+        p2filt[t] = (1/(math.sqrt(2*np.pi*sig)))*math.exp(-1*(y[t]-u1)**2/(2*sig))* p2_prev[t] / fyt_global[t]
 
     return p1filt,p2filt
 
@@ -122,13 +116,12 @@ def hamilton(params,y):
     p2filt = np.zeros(len(y))
     f= np.zeros(len(y))
 
-    delta1 = params[0]
-    delta2= params[1]
-    phi = params[2]
-    sig=params[3]
-    p11 = params[4]
+    u0 = params[0]
+    u1= params[1]
+    sig = params[2]
+    p11=params[3]
+    p22 = params[4]
     p12 = 1 - p11
-    p22=params[5]
     p21 = 1 - p22
 
     
@@ -142,48 +135,40 @@ def hamilton(params,y):
         p2pred = p12*p1filt[t-1] + p22*p2filt[t-1]
     
         #etape 2
-        f[t] = 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-delta1-phi*y[t-1])**2/(2*sig))*p1pred + 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-delta2-phi*y[t-1])**2/(2*sig))*p2pred
+        f[t] = 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-u0)**2/(2*sig))*p1pred + 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-u1)**2/(2*sig))*p2pred
             
         #etape 3
-        p1filt[t] = 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-delta1-phi*y[t-1])**2/(2*sig))*p1pred / f[t]
-        p2filt[t] = 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-delta2-phi*y[t-1])**2/(2*sig))*p2pred / f[t]
+        p1filt[t] = 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-u0)**2/(2*sig))*p1pred / f[t]
+        p2filt[t] = 1/(math.sqrt(2*np.pi*sig))*math.exp(-1*(y[t]-u1)**2/(2*sig))*p2pred / f[t]
 
     res = f[1:]
     log = np.sum((np.log(res)))
 
-    # sortedf = sorted(f)
-    # fit = stats.norm.pdf(sortedf, np.mean(sortedf), np.std(sortedf))
-    # plt.plot(sortedf,fit,'-o')
-    # plt.hist(sortedf,density=True)    
-    # plt.show() 
-    # plt.plot(range(len(y)),f)
-    # plt.show()
+    #plt.plot(range(len(y)),f)
+    #plt.show()
     return -1*log
 
 def optimize(y):
     #Constraints for the optimization of parameters
-    
+
     def constraint1(params):
-        return 1 - params[4] - (1-params[4])
+        return 1 - params[3] - (1-params[3])
 
     def constraint2(params):
-        return 1 - params[5]-(1-params[5])
+        return 1 - params[4]-(1-params[4])
 
     def constraint3(params):
-        return params[3]-0.00001
+        return params[2]-0.01
 
-    def constraint4(params):
-        return 1-abs(params[2])
 
     #Optimization
     con1 = {"type": "eq", "fun": constraint1}
     con2 = {"type": "eq", "fun": constraint2}
     con3 = {"type": "ineq", "fun": constraint3}
-    con4 = {"type": "ineq" , "fun" : constraint4}
-    cons = [con1,con2,con3,con4]
-    bounds = ((0.00001,None),(0.00001,None),(0.00001,1),(0.0001,None),(0.0001,1),(0.000001,1))
-    xo=[0.5,0.7,0.1,0.4,0.7,0.7]
-    optparams = spo.minimize(hamilton,args=y, x0=xo,constraints = cons, bounds = bounds, method = "SLSQP")
+    cons = [con1,con2,con3]
+    bounds = ((0,None),(0,None),(0.1,1),(0.1,1),(0.1,1))
+    xo=[0.5,4,1,0.7,0.7]
+    optparams = spo.minimize(hamilton,args=(y,), x0=xo, bounds = bounds)
     return optparams
 
 
@@ -199,20 +184,19 @@ def MonteCarloSimulate(count):
         p22=0.9
         p12 = 1 - p11
         p21 = 1 - p22
-        delta1 = random.uniform(3,6) + 0.0001
-        delta2 = random.uniform(0,1) + 0.0001
-        phi = random.random() + 0.0001
-        sig=0.5
+        u0 = 1
+        u1 = 3
+        sig= 1
         t=10000
 
         transmat = [[p11,p12],[p21,p22]]
-        params=[delta1,delta2,phi,sig,p11,p22]
+        params=[u0,u1,sig,p11,p22]
 
         #Step 2, we generate states according to the matrix
         x = generate_state(transmat, t)
 
         #Step 3, we generate the ar according to the states
-        y = generateAR(params,x)
+        y = generateNorm(params,x)
 
         #Step 4 we generate the probabilities with the filter
         p1filt,p2filt = generate_p(params, y)
@@ -234,12 +218,11 @@ def MonteCarloSimulate(count):
         print()
         print(f"Actual params are : {params}")
         print(f"actual transmat is : {transmat}")
-        print(f"optimizer params are : {optimizeroutput.success}")
+        print(f"optimizer params are : {optimizeroutput.x}")
         print(f"hmmtransmat is : {hmmtransmat}")
         print(f"squared error is : {squarederror}")
 
-
-MonteCarloSimulate(5)
+MonteCarloSimulate(3)
 
 # #Step 1, we initiate data
 # delta1 = 3
