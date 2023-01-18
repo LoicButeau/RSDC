@@ -7,7 +7,7 @@ import random
 import pandas as pd
 import numpy.random as rnd
 import scipy.stats as stats
-
+from tqdm import tqdm
 np.random.seed(893)
 
 # Generates the states
@@ -168,13 +168,15 @@ def optimize(y):
     cons = [con1,con2,con3]
     bounds = ((0,None),(0,None),(0.1,1),(0.1,1),(0.1,1))
     xo=[0.5,4,1,0.7,0.7]
-    optparams = spo.minimize(hamilton,args=(y,), x0=xo, bounds = bounds)
+    optparams = spo.minimize(hamilton,args=(y,), x0=xo, bounds = bounds, method = "SLSQP")
     return optparams
 
 
 def MonteCarloSimulate(count):
-    
-    for i in range(count):
+
+    df = pd.DataFrame(columns = ["u0e","u1e", "sige", "p11e", "p22e"])
+
+    for i in tqdm(range(count)):
 
         #Step 1: We initiate the data
         p11= random.random()+0.0001
@@ -187,7 +189,7 @@ def MonteCarloSimulate(count):
         u0 = 1
         u1 = 3
         sig= 1
-        t=10000
+        t=1000
 
         transmat = [[p11,p12],[p21,p22]]
         params=[u0,u1,sig,p11,p22]
@@ -205,24 +207,38 @@ def MonteCarloSimulate(count):
         hmmstates = hmm(p1filt,p2filt)
 
         #Step 6: We find the transition matrix accroding to the predicted states
-        hmmtransmat = find_transition(hmmstates)
+        #hmmtransmat = find_transition(hmmstates)
 
         #Step 7: optimize the parameters
         optimizeroutput = optimize(y)
 
         #Step 8: calculate squared error
-        squarederrormat = np.subtract(hmmtransmat,transmat)
-        squaredmat = np.square(squarederrormat)
-        squarederror = np.sum(squaredmat)
+        #squarederrormat = np.subtract(hmmtransmat,transmat)
+        #squaredmat = np.square(squarederrormat)
+        #squarederror = np.sum(squaredmat)
+
+        #Step 9: calculate squared error of params
+        u0 = optimizeroutput.x[0]
+        u1 = optimizeroutput.x[1]
+        sig =optimizeroutput.x[2]
+        p11 = optimizeroutput.x[3]
+        p22 = optimizeroutput.x[4]
+
+        df.loc[len(df)]=[u0,u1,sig,p11,p22]
+
 
         print()
         print(f"Actual params are : {params}")
         print(f"actual transmat is : {transmat}")
         print(f"optimizer params are : {optimizeroutput.x}")
-        print(f"hmmtransmat is : {hmmtransmat}")
-        print(f"squared error is : {squarederror}")
+        #print(f"hmmtransmat is : {hmmtransmat}")
+        #print(f"squared error is : {squarederror}")
 
-MonteCarloSimulate(3)
+    return df
+
+#result = MonteCarloSimulate(100)
+#print(result)
+#result.to_csv("result5.csv")
 
 # #Step 1, we initiate data
 # delta1 = 3
